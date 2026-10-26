@@ -1,0 +1,18 @@
+﻿<Project>
+  <PropertyGroup>
+    <Version>1.0.0</Version>
+    <Company>Richard Griffith (d/b/a Griffith Software)</Company>
+    <Authors>Griffith Software</Authors>
+    <Product>Room Switcher</Product>
+    <Copyright>Copyright (c) 2026 Richard Griffith (d/b/a Griffith Software)</Copyright>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <DebugType>none</DebugType>
+  </PropertyGroup>
+</Project>

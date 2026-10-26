@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- P/Invoke wrappers for the Windows display configuration and window placement APIs. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <RootNamespace>RoomSwitcher.Windows</RootNamespace>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="DisplayPoc" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\RoomSwitcher.Core\RoomSwitcher.Core.csproj" />
+  </ItemGroup>
+
+</Project>
