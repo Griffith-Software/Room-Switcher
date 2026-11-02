@@ -203,11 +203,20 @@ internal sealed class AppHost
 
     public void SaveConfig() => JsonStore.SaveConfig(Paths.ConfigPath, Config);
 
-    public void ReplaceConfig(AppConfig config)
+    public void ReplaceConfig(AppConfig config, bool save = true)
     {
         Service.Config = config;
-        SaveConfig();
+        if (save) SaveConfig();
     }
+
+    public void ReplaceLayouts(LayoutsFile layouts, bool save = true)
+    {
+        Service.Layouts = layouts;
+        if (save) JsonStore.SaveLayouts(Paths.LayoutsPath, layouts);
+    }
+
+    /// <summary>Set by the tray: carry out a Reset chosen in settings (after the settings window has closed).</summary>
+    public Action<ResetKind>? ResetRequested { get; set; }
 
     /// <summary>Used without a message loop: wait for the driver, then the configured delay.</summary>
     private sealed class DelaySettle : IDisplaySettle

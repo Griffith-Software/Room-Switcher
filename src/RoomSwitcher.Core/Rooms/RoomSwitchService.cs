@@ -51,14 +51,45 @@ public sealed class RoomSwitchService
     public Room? DetectCurrentRoom() => RoomMatcher.DetectCurrent(Config, _display.Query(), Layouts.LastRoomId);
 
     /// <summary>Checks a room against the hardware without touching the screens.</summary>
-    public PlanResult Check(Room room, bool askDriver = true)
+    public PlanResult Check(Room room, bool askDriver = true) => Check(Config, room, _display.Query(), askDriver ? _display : null);
+
+    /// <summary>
+    /// The planner's checks, then the driver's. If the driver turns down the whole room, fewer displays are
+    /// tried (no duplicates, then the main screen alone), so the room still switches while one display works.
+    /// </summary>
+    public static PlanResult Check(AppConfig config, Room room, DisplayState state, IDisplayBackend? driver)
     {
-        var result = RoomPlanner.Build(Config, room, _display.Query());
-        if (!result.Ok || !askDriver) return result;
-        var check = _display.Validate(result.Plan!);
+        var result = RoomPlanner.Build(config, room, state);
+        if (!result.Ok || driver == null) return result;
+        var plan = result.Plan!;
+        var check = driver.Validate(plan);
         if (check.Ok) return result;
+
+        foreach (var smaller in Smaller(plan))
+        {
+            if (!driver.Validate(smaller).Ok) continue;
+            var resolution = MonitorResolver.Resolve(config, state);
+            var off = plan.DevicePaths.Except(smaller.DevicePaths, StringComparer.OrdinalIgnoreCase).ToList();
+            var names = off.Select(p => resolution.MonitorIdFor(p) is { } id ? config.FindMonitor(id)?.Name : null).Select(n => n ?? "a display").ToList();
+            var problem = new RoomProblem(ProblemSeverity.Warning,
+                $"Windows couldn't turn on all of this room's displays together, so {RoomPlanner.JoinNames(names)} {(names.Count == 1 ? "stays" : "stay")} off. {check.Message}",
+                resolution.MonitorIdFor(off[0]));
+            return new PlanResult(smaller, result.Problems.Append(problem).ToList());
+        }
         return result with { Problems = result.Problems.Append(new RoomProblem(ProblemSeverity.Error, check.Message)).ToList() };
     }
+
+    private static IEnumerable<RoomPlan> Smaller(RoomPlan plan)
+    {
+        if (plan.Screens.Any(s => s.DevicePaths.Count > 1))
+            yield return plan with { Screens = plan.Screens.Select(s => s with { DevicePaths = [s.DevicePaths[0]] }).ToList() };
+        if (plan.Screens.Count > 1)
+            yield return plan with { Screens = [plan.Screens[0] with { DevicePaths = [plan.Screens[0].DevicePaths[0]] }] };
+    }
+
+    /// <summary>Displays the switch leaves off, in a sentence each, to go with the result.</summary>
+    private static List<string> LeftOff(PlanResult result) =>
+        result.Problems.Where(p => p.Severity == ProblemSeverity.Warning && p.MonitorId != null).Select(p => p.Message).ToList();
 
     public async Task<SwitchResult> SwitchToAsync(Room target, CancellationToken cancellationToken = default)
     {
@@ -66,20 +97,17 @@ public sealed class RoomSwitchService
         try
         {
             var state = _display.Query();
-            var planResult = RoomPlanner.Build(Config, target, state);
+            var planResult = Check(Config, target, state, _display);
             if (!planResult.Ok)
                 return SwitchResult.Fail($"Can't switch to {target.Name}. {planResult.FirstError ?? "This room has no displays turned on."}");
             var plan = planResult.Plan!;
-
-            var check = _display.Validate(plan);
-            if (!check.Ok)
-                return SwitchResult.Fail($"Can't switch to {target.Name}. {check.Message}");
+            var leftOff = LeftOff(planResult);
 
             var leaving = RoomMatcher.DetectCurrent(Config, state, Layouts.LastRoomId);
-            if (leaving?.Id == target.Id && planResult.Problems.Count == 0 && SameActiveMonitors(state, plan))
+            if (leaving?.Id == target.Id && planResult.Problems.All(p => p.MonitorId != null) && SameActiveMonitors(state, plan))
             {
                 // The screens are right; still put the room's sound back, in case it was changed.
-                var extras = (await ApplyAudioAsync(target, cancellationToken)).Concat(await ApplyDevicesAsync(target, cancellationToken)).ToList();
+                var extras = leftOff.Concat(await ApplyAudioAsync(target, cancellationToken)).Concat(await ApplyDevicesAsync(target, cancellationToken)).ToList();
                 return new SwitchResult(true, WithProblems($"{target.Name} is already on.", extras), Warning: extras.Count > 0);
             }
 
@@ -115,8 +143,8 @@ public sealed class RoomSwitchService
             // Sound last: a TV's HDMI sound device only appears once its screen is on.
             var sound = await ApplyAudioAsync(target, cancellationToken);
             var devices = await ApplyDevicesAsync(target, cancellationToken);
-            message = WithProblems(message, sound.Concat(devices).ToList());
-            return new SwitchResult(true, message, moved, refused, Warning: sound.Count > 0 || devices.Count > 0 || refused > 0);
+            message = WithProblems(message, leftOff.Concat(sound).Concat(devices).ToList());
+            return new SwitchResult(true, message, moved, refused, Warning: leftOff.Count > 0 || sound.Count > 0 || devices.Count > 0 || refused > 0);
         }
         finally
         {
@@ -192,12 +220,22 @@ public sealed class RoomSwitchService
         if (_audio == null || (room.AudioOutput == null && room.AudioInput == null)) return [];
         try
         {
+            RememberWindowsSound(_audio);
             return await AudioRules.ApplyAsync(_audio, room, _delay, cancellationToken: cancellationToken);
         }
         catch (Exception e) when (e is not OperationCanceledException)
         {
             return [$"Couldn't change the speakers or microphone. {e.Message}"];
         }
+    }
+
+    /// <summary>The first time a room changes the sound devices, notes the ones Windows had, so Reset can put them back.</summary>
+    private void RememberWindowsSound(IAudioBackend audio)
+    {
+        if (Layouts.SoundBefore != null) return;
+        AudioDeviceRef? Default(AudioFlow flow) => audio.List(flow).FirstOrDefault(d => d.IsDefault) is { } d ? AudioRules.ToRef(d) : null;
+        Layouts.SoundBefore = new SoundDefaults { Output = Default(AudioFlow.Output), Input = Default(AudioFlow.Input) };
+        SafeSaveLayouts();
     }
 
     /// <summary>Turns the room's USB devices on and off. Returns plain-language problems and safety notes.</summary>

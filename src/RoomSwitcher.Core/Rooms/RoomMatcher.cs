@@ -1,4 +1,4 @@
-using RoomSwitcher.Core.Display;
+﻿using RoomSwitcher.Core.Display;
 using RoomSwitcher.Core.Model;
 
 namespace RoomSwitcher.Core.Rooms;
@@ -10,6 +10,7 @@ public static class RoomMatcher
     /// A room matches when the same monitors are on and grouped into the same screens.
     /// If several rooms share that routing, the room last switched to wins if it fits what is on
     /// screen, then a room whose saved positions match exactly, then the first in the list.
+    /// The room last switched to also matches when what's on is that room without the displays it had to leave off.
     /// Returns null when nothing matches (for example after Win+P).
     /// </summary>
     public static Room? DetectCurrent(AppConfig config, DisplayState state, string? lastRoomId = null)
@@ -31,6 +32,12 @@ public static class RoomMatcher
         }
 
         var candidates = config.Rooms.Where(r => SameRouting(Routing(r), active)).ToList();
+        if (candidates.Count == 0 && lastRoomId != null && config.FindRoom(lastRoomId) is { } last)
+        {
+            var on = active.SelectMany(g => g).ToHashSet();
+            var partial = Routing(last).Select(g => g.Where(on.Contains).ToHashSet()).Where(g => g.Count > 0).ToList();
+            return SameRouting(partial, active) ? last : null;
+        }
         if (candidates.Count <= 1) return candidates.FirstOrDefault();
 
         // Rooms that fit what is on screen: saved positions match, or nothing saved to contradict it.

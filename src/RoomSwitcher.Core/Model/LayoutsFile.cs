@@ -1,4 +1,4 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace RoomSwitcher.Core.Model;
@@ -12,6 +12,17 @@ public sealed class LayoutsFile
     public Dictionary<string, RoomLayout> Rooms { get; set; } = new();
     /// <summary>The room Room Switcher last switched to. Breaks ties when two rooms use the same monitors.</summary>
     public string? LastRoomId { get; set; }
+    /// <summary>The default speakers and microphone Windows had before a room first changed them. Reset puts them back.</summary>
+    public SoundDefaults? SoundBefore { get; set; }
+
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? Extra { get; set; }
+}
+
+public sealed class SoundDefaults
+{
+    public AudioDeviceRef? Output { get; set; }
+    public AudioDeviceRef? Input { get; set; }
 
     [JsonExtensionData]
     public Dictionary<string, JsonElement>? Extra { get; set; }

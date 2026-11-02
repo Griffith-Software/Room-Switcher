@@ -37,6 +37,10 @@ internal sealed partial class SetupForm : Form
     private readonly ModernButton _save = new("Save and Close", ButtonKind.Secondary, Theme.Glyphs.Save);
     private TextCommit? _textCommit;
     private readonly IdentifyToggle _identifyNumbers = new();
+    private readonly ModernButton _reset = new("Reset", ButtonKind.Secondary, Theme.Glyphs.Refresh)
+    {
+        Height = 32, GlyphColor = Theme.Subtext, AccessibleName = "Reset Room Switcher",
+    };
 
     public SetupForm(AppHost host, bool firstRun)
     {
@@ -95,6 +99,17 @@ internal sealed partial class SetupForm : Form
         PauseShortcutsWhileEditing(_nextRoomHotkey);
 
         _nav.StepClicked += (_, index) => GoTo(index);
+        // Reset sits at the bottom of the step list, to the right of the version number. Nothing to reset on first use.
+        _reset.Visible = !firstRun;
+        _reset.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
+        _nav.Controls.Add(_reset);
+        void PlaceReset()
+        {
+            var s = Theme.Scale(_nav);
+            _reset.Location = new Point(_nav.Width - _reset.Width - (int)(14 * s), _nav.Height - (int)(28 * s) - _reset.Height / 2);
+        }
+        _nav.SizeChanged += (_, _) => PlaceReset();
+        _reset.Click += (_, _) => AskReset();
         _nav.Footer = $"Version {System.Diagnostics.FileVersionInfo.GetVersionInfo(AppHost.ExePath).ProductVersion?.Split('+')[0]}";
         _back.Click += (_, _) => GoTo(Math.Max(0, _step - 1));
         _next.Click += (_, _) =>
@@ -264,17 +279,13 @@ internal sealed partial class SetupForm : Form
 
     private PlanResult CheckRoom(Room room)
     {
-        var result = RoomPlanner.Build(_draft, room, _state);
-        if (!result.Ok) return result;
         try
         {
-            var driver = _host.Display.Validate(result.Plan!);
-            if (driver.Ok) return result;
-            return result with { Problems = result.Problems.Append(new RoomProblem(ProblemSeverity.Error, driver.Message)).ToList() };
+            return RoomSwitchService.Check(_draft, room, _state, _host.Display);
         }
         catch (Exception e)
         {
-            return result with { Problems = result.Problems.Append(new RoomProblem(ProblemSeverity.Error, e.Message)).ToList() };
+            return new PlanResult(null, [new RoomProblem(ProblemSeverity.Error, e.Message)]);
         }
     }
 
@@ -285,6 +296,17 @@ internal sealed partial class SetupForm : Form
     }
 
     private bool IsConnected(MonitorInfo m) => MonitorResolver.Resolve(_draft, _state).Find(m.Id) != null;
+
+    // ---- reset ----
+
+    private void AskReset()
+    {
+        if (ResetDialog.Ask(this) is not { } kind) return;
+        // The reset replaces the settings, so there's nothing to save here; the tray does the work once this closes.
+        _dirty = false;
+        Close();
+        _host.ResetRequested?.Invoke(kind);
+    }
 
     // ---- saving ----
 

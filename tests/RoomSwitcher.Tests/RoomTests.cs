@@ -77,17 +77,31 @@ public sealed class PlannerTests
     }
 
     [Fact]
-    public void Disconnected_monitor_is_an_error()
+    public void Room_with_its_only_display_missing_is_an_error()
     {
         var config = Config();
         var state = OfficeState() with { Monitors = OfficeState().Monitors.Where(m => m.DevicePath != PathTv).ToList() };
         var result = RoomPlanner.Build(config, config.Rooms[1], state);
         Assert.False(result.Ok);
-        Assert.Equal("Windows can't detect Living room TV right now. Check that it's plugged in and powered on, then try again.", result.FirstError);
+        Assert.Equal("None of this room's displays can be turned on right now.", result.FirstError);
+        Assert.Contains(result.Problems, p => p.Severity == ProblemSeverity.Warning && p.MonitorId == "tv"
+            && p.Message == "Windows can't detect Living room TV right now, so it stays off. Check that it's plugged in and powered on.");
     }
 
     [Fact]
-    public void Mirroring_across_graphics_cards_is_an_error()
+    public void Missing_display_stays_off_and_the_rest_of_the_room_switches()
+    {
+        var config = Config();
+        var state = OfficeState() with { Monitors = OfficeState().Monitors.Where(m => m.DevicePath != PathRight).ToList() };
+        var result = RoomPlanner.Build(config, config.Rooms[0], state);
+        Assert.True(result.Ok);
+        var problem = Assert.Single(result.Problems);
+        Assert.Equal((ProblemSeverity.Warning, "right"), (problem.Severity, problem.MonitorId));
+        Assert.Equal(new[] { PathLeft }, Assert.Single(result.Plan!.Screens).DevicePaths);
+    }
+
+    [Fact]
+    public void Mirroring_across_graphics_cards_keeps_the_first_card()
     {
         var config = Config();
         var state = OfficeState() with
@@ -96,12 +110,14 @@ public sealed class PlannerTests
             Adapters = [new AdapterInfo("gpu0", 4), new AdapterInfo("gpu1", 4)],
         };
         var result = RoomPlanner.Build(config, config.Rooms[2], state);
-        Assert.False(result.Ok);
-        Assert.Equal("Office left and Living room TV are on different graphics cards, so they can't be duplicated.", result.FirstError);
+        Assert.True(result.Ok);
+        Assert.Equal("Office left and Living room TV are on different graphics cards, so they can't be duplicated. Living room TV stays off.",
+            Assert.Single(result.Problems).Message);
+        Assert.Equal(new[] { PathLeft }, Assert.Single(result.Plan!.Screens).DevicePaths);
     }
 
     [Fact]
-    public void Too_many_screens_for_the_card_is_an_error()
+    public void Too_many_screens_for_the_card_leaves_the_last_off()
     {
         var config = Config();
         var room = new Room
@@ -112,8 +128,10 @@ public sealed class PlannerTests
         config.Rooms.Add(room);
         var state = OfficeState() with { Adapters = [new AdapterInfo("gpu0", 2)] };
         var result = RoomPlanner.Build(config, room, state);
-        Assert.False(result.Ok);
-        Assert.Contains("can only show 2 separate screens at once", result.FirstError);
+        Assert.True(result.Ok);
+        var problem = Assert.Single(result.Problems);
+        Assert.Contains("can only show 2 separate screens at once, and this room needs 3, so Living room TV stays off.", problem.Message);
+        Assert.Equal(2, result.Plan!.Screens.Count);
     }
 
     [Fact]

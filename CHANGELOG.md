@@ -2,6 +2,12 @@
 
 All notable changes to Room Switcher. Versions follow [semantic versioning](https://semver.org/).
 
+## 1.1.0 (2026-11-02)
+
+- **Support This App** in the tray menu, and a support banner on the **Finish** step of settings ("Support Room Switcher · Pay what you want, one time or monthly."). Both open `https://griffith.software/support?app=room-switcher` in your browser. Nothing is tracked, and Room Switcher still makes no network connections itself.
+- **Reset**, next to the version number in settings: reset the rooms and what's assigned to them (keeping display, sound and device nicknames), reset everything, or uninstall Room Switcher. Each first puts Windows back the way Room Switcher found it: every display on at its own resolution and the recommended scale, the speakers and microphone Windows had before a room first changed them, and any devices your rooms turned off back on. Reset Everything and Uninstall also remove the device switching helper; Uninstall also removes the startup and Start menu shortcuts, all settings and logs, and the program's own files.
+- **A display that isn't working no longer blocks its room.** If Windows can't detect one of a room's displays, duplicated displays turn out to be on different graphics cards, the card can't show that many screens, or the driver turns down the whole set, the room still switches with the displays that work and says which ones stayed off. In settings those displays are highlighted in yellow instead of the room being marked as needing attention.
+
 ## 1.0.0 (2026-10-26)
 
 - First public release. Licensed under Apache License 2.0 with the Commons Clause (source-available: free to use, modify and share, not to sell).

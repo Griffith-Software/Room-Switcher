@@ -68,13 +68,18 @@ public static class StartWithWindows
         }
     }
 
-    private static (string Target, string Arguments)? ReadShortcut()
+    /// <summary>The program a .lnk shortcut opens, or null if it can't be read.</summary>
+    public static string? ShortcutTarget(string shortcutPath) => ReadShortcut(shortcutPath)?.Target;
+
+    private static (string Target, string Arguments)? ReadShortcut() => ReadShortcut(ShortcutPath);
+
+    private static (string Target, string Arguments)? ReadShortcut(string shortcutPath)
     {
-        if (!File.Exists(ShortcutPath)) return null;
+        if (!File.Exists(shortcutPath)) return null;
         var link = (IShellLinkW)new ShellLink();
         try
         {
-            ((IPersistFile)link).Load(ShortcutPath, 0);
+            ((IPersistFile)link).Load(shortcutPath, 0);
             var target = new StringBuilder(1024);
             link.GetPath(target, target.Capacity, IntPtr.Zero, 0);
             var arguments = new StringBuilder(1024);

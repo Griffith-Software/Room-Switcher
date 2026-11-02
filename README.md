@@ -21,7 +21,8 @@ Good to know:
 - Sound per room: each room can switch Windows to its own speakers and microphone, such as the TV's speakers in the living room and a headset at the desk.
 - Keyboard shortcuts: each room has its own (Ctrl+Alt+1, Ctrl+Alt+2… by default), plus Ctrl+Alt+0 to step to the next room. Change them to anything you like.
 - If a switch fails, your previous display settings are restored automatically.
-- Nothing to install, no account, no network access, no telemetry. Settings are plain JSON files.
+- Nothing to install, no account, no telemetry. Room Switcher makes no network connections itself; the support buttons only open your browser. Settings are plain JSON files.
+- Reset: start the rooms over (keeping nicknames), reset everything, or uninstall, from one button in settings.
 
 ## Screenshots
 
@@ -72,7 +73,8 @@ On the **Rooms** step, under the displays grid, choose the **Speakers** and **Mi
 | Edit rooms… | Opens Room Switcher settings: rename, duplicate, reorder, delete or change rooms. |
 | Test devices… | Opens a window where you pick a room and test everything it uses: Identify its displays (or switch to it), play a chime through its speakers, watch its microphone's level, and press a key or move a mouse to see it light up. It also fixes silent apps (below). |
 | Start with Windows | Starts Room Switcher when you sign in (a Room Switcher shortcut in your Startup folder). |
-| Exit | Closes Room Switcher. The displays stay as they are. |
+| Support This App | Opens Griffith Software's support page in your browser. |
+| Exit | Closes Room Switcher. The displays stay as they are. If rooms turned devices off, it offers to turn them back on first. |
 
 ## Devices
 
@@ -104,6 +106,7 @@ Both files are plain JSON, are written safely (temp file, then rename), and keep
 ## Good to know
 
 - **Your graphics card sets the limits.** It decides how many displays can be on at once, which displays can be duplicated (usually only displays on the same card) and which resolutions duplicated displays can share. Room Switcher asks Windows and the graphics driver and tells you plainly when a room can't work.
+- **A display that isn't working doesn't stop the room.** If Windows can't detect one of a room's displays, or the graphics card can't run all of them together, Room Switcher still switches, leaves that display off and says which one. A room is only unavailable when none of its displays can be turned on.
 - **Programs running as administrator** can't be moved by a normal program, so their windows are only put back if Room Switcher is also run as administrator.
 - Windows are matched by handle, then by program, class and title. A window whose title changes (a browser tab, say) is matched by program and class.
 - Some games and full-screen apps react badly to displays changing while they run.
@@ -130,7 +133,7 @@ Or run `tools/package.ps1` to build, test and produce `release/RoomSwitcher_v<ve
 
 ## Privacy
 
-Room Switcher has no network code: it never connects to the internet, and there's no account or telemetry. Everything stays on your PC:
+Room Switcher has no network code: it never connects to the internet itself, and there's no account or telemetry. Everything stays on your PC:
 
 - `config.json`: your displays, rooms, nicknames, sound choices and devices.
 - `layouts.json`: where each room's windows were, including each window's **title** (used to put the right window back). Titles can contain document names or email subjects.
@@ -140,7 +143,33 @@ Room Switcher has no network code: it never connects to the internet, and there'
 
 The device switching helper (if you set it up) reads requests from a file in your own user folder, so another program already running as you could ask it to turn listed devices on or off, or restart Windows Audio. It can't run anything else.
 
+- Support opens Griffith Software's support address on griffith.software, which forwards to Griffith Software's page on Buy Me a Coffee, only if you choose it.
+- Buy Me a Coffee handles support payments, under its own privacy policy, only if you choose to support. The program stores nothing about who supported it.
+
+## Support
+
+Room Switcher is free. If it's useful to you, **Support This App** in the tray menu, or **Support the App →** on the **Finish** step of settings, opens `https://griffith.software/support?app=room-switcher` in your browser, where you can pay what you want, one time or monthly.
+
+## Reset
+
+In Room Switcher settings, **Reset** (bottom left, next to the version number) offers three choices. Each first puts Windows back the way Room Switcher found it:
+
+- every connected display on and extended, each at its own resolution, landscape, with the refresh rate and the recommended scale Windows chooses (the main display stays the main one);
+- the default speakers and microphone Windows had before a room first changed them (Room Switcher notes them at that moment, from version 1.1.0 on);
+- any devices your rooms turned off, back on.
+
+Then:
+
+
+- **Reset Rooms and Assignments:** deletes all rooms, the speakers, microphone and devices chosen for them, and their saved window positions. Display, sound and device nicknames and your options stay. Setup starts again at the beginning.
+- **Reset Everything:** deletes all rooms, nicknames and options, turns off Start with Windows, and removes the device switching helper (Windows asks for permission if it was set up), as on first use.
+- **Uninstall Room Switcher:** see below.
+
 ## Removing Room Switcher
+
+In Room Switcher settings, select **Reset → Uninstall Room Switcher**. It removes the device switching helper and its scheduled task (Windows asks for permission if it was set up), the startup and Start menu shortcuts, `%APPDATA%\Room Switcher` and `%LOCALAPPDATA%\Room Switcher`, then deletes `RoomSwitcher.exe` and the files it came with a few seconds after it closes. Other files in that folder are left alone.
+
+To remove it by hand instead:
 
 1. If you set up device switching, open **Edit rooms… → Devices** and select **Remove**. That deletes the helper in `C:\Program Files\Room Switcher` and its scheduled task.
 2. Turn off **Start with Windows** in the tray menu (or delete *Room Switcher* from your Startup folder).

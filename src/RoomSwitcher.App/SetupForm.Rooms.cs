@@ -572,12 +572,12 @@ internal sealed partial class SetupForm
     private void UpdateRoomStatus(Room room, bool refreshListItem = false)
     {
         var result = CheckRoom(room);
-        var problemMonitors = result.Problems.Where(p => p.Severity == ProblemSeverity.Error && p.MonitorId != null)
+        var problemMonitors = result.Problems.Where(p => p.MonitorId != null)
             .Select(p => p.MonitorId).ToHashSet();
         foreach (DataGridViewRow row in _routing.Rows)
         {
             var m = (MonitorInfo)row.Tag!;
-            row.DefaultCellStyle.BackColor = problemMonitors.Contains(m.Id) ? Theme.ErrorRow : Theme.Card;
+            row.DefaultCellStyle.BackColor = !problemMonitors.Contains(m.Id) ? Theme.Card : result.Ok ? Theme.WarningBack : Theme.ErrorRow;
         }
 
         var lines = new List<string>();
@@ -586,11 +586,14 @@ internal sealed partial class SetupForm
         if (result.Ok)
         {
             var on = room.ActiveMonitorIds.Count();
-            lines.Insert(0, $"✔ This room works on this PC: {on} display{(on == 1 ? "" : "s")} on, {room.Screens.Count} screen{(room.Screens.Count == 1 ? "" : "s")}.");
+            var off = result.Problems.Count(p => p.MonitorId != null);
+            lines.Insert(0, off == 0
+                ? $"✔ This room works on this PC: {on} display{(on == 1 ? "" : "s")} on, {room.Screens.Count} screen{(room.Screens.Count == 1 ? "" : "s")}."
+                : $"✔ This room can be used, without the display{(off == 1 ? "" : "s")} below.");
             if (!room.IsArranged)
                 lines.Add("Not arranged yet. Windows will choose where each display goes until you arrange this room on the Arrange step.");
         }
-        _roomStatus.ForeColor = result.Ok ? Theme.Success : Theme.Danger;
+        _roomStatus.ForeColor = !result.Ok ? Theme.Danger : result.Problems.Any(p => p.MonitorId != null) ? Theme.Warning : Theme.Success;
         _roomStatus.Text = string.Join("\n", lines);
 
         var index = _draft.Rooms.IndexOf(room);

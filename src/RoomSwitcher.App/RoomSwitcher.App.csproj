@@ -31,6 +31,7 @@
 
   <ItemGroup>
     <EmbeddedResource Include="Assets\RoomSwitcher-512.png" LogicalName="RoomSwitcher.App.Assets.RoomSwitcher-512.png" />
+    <EmbeddedResource Include="Assets\megaphone.png" LogicalName="RoomSwitcher.App.Assets.megaphone.png" />
   </ItemGroup>
 
   <ItemGroup>

@@ -68,12 +68,15 @@ internal sealed partial class SetupForm
         inner.Controls.Add(_nextRoomNote);
         options.Controls.Add(inner);
         flow.Controls.Add(options);
+        var support = SupportButton.Banner();
         flow.SizeChanged += (_, _) =>
         {
             var w = Math.Max(400, flow.ClientSize.Width - SystemInformation.VerticalScrollBarWidth - 4);
             options.MinimumSize = new Size(w, 0);
             options.MaximumSize = new Size(w, 0);
+            support.Width = w;
         };
+        flow.Controls.Add(support);
         flow.Controls.Add(_whereFiles);
         var cli = Paragraph("From a shortcut or script: RoomSwitcher.exe --room \"Office\"   ·   --list   ·   --all");
         cli.Margin = new Padding(0, 10, 0, 0);

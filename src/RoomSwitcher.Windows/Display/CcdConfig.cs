@@ -1,4 +1,4 @@
-using RoomSwitcher.Windows.Native;
+﻿using RoomSwitcher.Windows.Native;
 using static RoomSwitcher.Windows.Native.DisplayConfigApi;
 
 namespace RoomSwitcher.Windows.Display;
@@ -129,6 +129,17 @@ internal static class DeviceInfo
         {
             header = Header(DISPLAYCONFIG_DEVICE_INFO_SET_DPI_SCALE, System.Runtime.InteropServices.Marshal.SizeOf<DISPLAYCONFIG_SOURCE_DPI_SCALE_SET>(), adapter, sourceId),
             scaleRel = relative,
+        };
+        return DisplayConfigSetDeviceInfo(ref set) == ERROR_SUCCESS;
+    }
+
+    /// <summary>Back to the scale Windows recommends for this display.</summary>
+    public static bool SetRecommendedScale(LUID adapter, uint sourceId)
+    {
+        var set = new DISPLAYCONFIG_SOURCE_DPI_SCALE_SET
+        {
+            header = Header(DISPLAYCONFIG_DEVICE_INFO_SET_DPI_SCALE, System.Runtime.InteropServices.Marshal.SizeOf<DISPLAYCONFIG_SOURCE_DPI_SCALE_SET>(), adapter, sourceId),
+            scaleRel = 0,
         };
         return DisplayConfigSetDeviceInfo(ref set) == ERROR_SUCCESS;
     }

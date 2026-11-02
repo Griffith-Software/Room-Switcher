@@ -152,6 +152,45 @@ public sealed class SwitchServiceTests
     }
 
     [Fact]
+    public async Task Room_with_a_missing_display_switches_with_a_warning()
+    {
+        await _service.SwitchToAsync(Living);
+        _display.State = _display.State with { Monitors = _display.State.Monitors.Where(m => m.DevicePath != PathRight).ToList() };
+        var result = await _service.SwitchToAsync(Office);
+        Assert.True(result.Ok, result.Message);
+        Assert.True(result.Warning);
+        Assert.Contains("Office right", result.Message);
+        Assert.Contains("stays off", result.Message);
+        Assert.Equal("office", _service.DetectCurrentRoom()?.Id);
+    }
+
+    [Fact]
+    public void Driver_refusing_the_whole_room_falls_back_to_the_main_display()
+    {
+        _display.ValidateOnlyUpTo = 1;
+        var result = _service.Check(Office);
+        Assert.True(result.Ok);
+        Assert.Equal(new[] { PathLeft }, result.Plan!.DevicePaths);
+        Assert.Contains(result.Problems, p => p.Severity == ProblemSeverity.Warning && p.Message.Contains("Office right stays off"));
+    }
+
+    [Fact]
+    public async Task First_sound_change_remembers_what_Windows_had()
+    {
+        var audio = new FakeAudio();
+        audio.Devices.Add(FakeAudio.Speaker("desk", "Desk speakers", isDefault: true));
+        audio.Devices.Add(FakeAudio.Speaker("tv", "TV"));
+        var service = new RoomSwitchService(_config, new LayoutsFile(), _display, _windows, _settle, _ => { }, audio, (_, _) => Task.CompletedTask);
+        Living.AudioOutput = new AudioDeviceRef { Id = "tv", Name = "TV" };
+        Office.AudioOutput = new AudioDeviceRef { Id = "desk", Name = "Desk speakers" };
+        await service.SwitchToAsync(Living);
+        await service.SwitchToAsync(Office);
+        await service.SwitchToAsync(Living);
+        Assert.Equal("desk", service.Layouts.SoundBefore?.Output?.Id);
+        Assert.Null(service.Layouts.SoundBefore?.Input);
+    }
+
+    [Fact]
     public async Task Switching_to_current_room_does_nothing()
     {
         var result = await _service.SwitchToAsync(Office);

@@ -193,6 +193,41 @@ public sealed class WindowsDisplayBackend : IDisplayBackend
         return error == ERROR_SUCCESS ? DisplayResult.Success : DisplayResult.Fail(ErrorText(error));
     }
 
+    /// <summary>
+    /// Windows' own settings, for Reset: every connected display on and extended, each at its own (native)
+    /// resolution, landscape, with the refresh rate and the recommended scale Windows chooses. The main display stays the main one.
+    /// </summary>
+    public DisplayResult ResetToDefaults()
+    {
+        var state = Query();
+        var main = state.Screens.FirstOrDefault(s => s.Primary)?.DevicePaths ?? [];
+        var order = state.Monitors
+            .OrderByDescending(m => main.Contains(m.DevicePath, StringComparer.OrdinalIgnoreCase))
+            .ThenBy(m => state.Screens.FirstOrDefault(s => s.DevicePaths.Contains(m.DevicePath, StringComparer.OrdinalIgnoreCase))?.X ?? int.MaxValue)
+            .ToList();
+        var plan = new RoomPlan("", "Windows defaults", order.Select(m => new PlannedScreen(0, 0, 0, 0, 0, 0, null, [m.DevicePath])).ToList());
+
+        var applied = false;
+        try
+        {
+            var all = CcdConfig.All();
+            var targets = Targets(all).ToDictionary(t => t.DevicePath, StringComparer.OrdinalIgnoreCase);
+            var sources = Synthesize(plan, AssignSources(plan, all, CcdConfig.Active(), targets), targets);
+            var attempt = Build("each display's own resolution, side by side", all, sources, targets, withModes: true, keepRefresh: false);
+            applied = plan.Screens.Count > 0 && Run(attempt, SDC_APPLY | SDC_SAVE_TO_DATABASE) == ERROR_SUCCESS;
+        }
+        catch (Exception e) when (e is PlanException or DisplayApiException)
+        {
+            // More displays than the graphics card can show at once: Show all extends across as many as it can.
+        }
+        if (!applied && ShowAll() is { Ok: false } failed) return failed;
+
+        foreach (var p in CcdConfig.Active().Paths.Where(p => (p.flags & DISPLAYCONFIG_PATH_ACTIVE) != 0))
+            DeviceInfo.SetRecommendedScale(p.sourceInfo.adapterId, p.sourceInfo.id);
+        LastDetail = applied ? "reset to Windows defaults" : "reset: all displays on";
+        return DisplayResult.Success;
+    }
+
     // ---- building path sets ----
 
     private sealed class PlanException(string message) : Exception(message);

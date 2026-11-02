@@ -42,6 +42,7 @@ internal sealed class TrayApplication : ApplicationContext
         _host.PauseShortcuts = () => _hotkeys.UnregisterAll();
         _host.ResumeShortcuts = () => RegisterHotkeys(quiet: true);
         _host.HoldsShortcut = _hotkeys.Holds;
+        _host.ResetRequested = kind => SynchronizationContext.Current!.Post(async _ => await ResetAsync(kind), null);
 
         if (atSignIn && _host.Config.Settings.RestartAudioAtSignIn) _ = RestartAudioAfterSignInAsync();
 
@@ -152,6 +153,7 @@ internal sealed class TrayApplication : ApplicationContext
         start.AccessibleName = startsWithWindows ? "Start with Windows, on" : "Start with Windows, off";
         start.AccessibleRole = AccessibleRole.CheckButton;
         _menu.Items.Add(start);
+        _menu.Items.Add(_menu.Item("Support This App", Theme.Glyphs.Heart, (_, _) => SupportButton.Open()));
         _menu.Items.Add(_menu.Item("Exit", Theme.Glyphs.Power, async (_, _) => await ExitAsync()));
         _menu.ResumeLayout();
     }
@@ -315,6 +317,31 @@ internal sealed class TrayApplication : ApplicationContext
             // Never let a device problem stop Room Switcher from closing.
         }
         ExitThread();
+    }
+
+    /// <summary>Carries out the Reset chosen in settings, once the settings window has closed.</summary>
+    private async Task ResetAsync(ResetKind kind)
+    {
+        _test?.Close();
+        var problem = kind switch
+        {
+            ResetKind.Rooms => await ResetActions.ResetRoomsAsync(_host),
+            ResetKind.Everything => await ResetActions.ResetEverythingAsync(_host),
+            _ => await ResetActions.UninstallAsync(_host),
+        };
+        if (kind == ResetKind.Uninstall && problem == null)
+        {
+            _hotkeys.UnregisterAll();
+            ThemedDialog.Show(null!, "Room Switcher has been uninstalled.\n\nIts settings, nicknames and shortcuts are gone, and RoomSwitcher.exe is deleted a few seconds after this closes.",
+                "Room Switcher", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            ExitThread();
+            return;
+        }
+        if (problem != null) Notify(problem, ToolTipIcon.Warning);
+        if (kind == ResetKind.Uninstall) return;
+        UpdateIcon();
+        RegisterHotkeys(quiet: true);
+        OpenSetup(firstRun: true);
     }
 
     private TestDevicesForm? _test;

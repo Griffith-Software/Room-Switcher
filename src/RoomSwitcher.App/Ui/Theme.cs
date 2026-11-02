@@ -37,6 +37,9 @@ internal static class Theme
     public static readonly Color SuccessBack = Color.FromArgb(222, 245, 228);
     public static readonly Color SuccessDot = Color.FromArgb(34, 170, 80);
     public static readonly Color Danger = Color.FromArgb(185, 28, 28);
+    public static readonly Color Red = Color.FromArgb(216, 27, 43);
+    public static readonly Color RedHover = Color.FromArgb(196, 22, 37);
+    public static readonly Color RedPressed = Color.FromArgb(170, 18, 31);
     public static readonly Color NeutralBack = Color.FromArgb(234, 237, 242);
     public static readonly Color WarningBack = Color.FromArgb(254, 243, 214);
     public static readonly Color Warning = Color.FromArgb(146, 94, 0);
@@ -65,6 +68,7 @@ internal static class Theme
         public const string Checkbox = "";
         public const string CheckboxChecked = "";
         public const string Test = "";
+        public const string Heart = "";
         public const string Info = "";
         public const string Play = "";
         public const string Stop = "";

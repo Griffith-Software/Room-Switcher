@@ -1,9 +1,9 @@
-using System.ComponentModel;
+﻿using System.ComponentModel;
 using System.Drawing.Drawing2D;
 
 namespace RoomSwitcher.App.Ui;
 
-internal enum ButtonKind { Primary, Secondary }
+internal enum ButtonKind { Primary, Secondary, Red }
 
 /// <summary>A rounded button with an optional icon glyph, in the primary (blue) or secondary (outlined) style.</summary>
 internal sealed class ModernButton : Button
@@ -62,7 +62,14 @@ internal sealed class ModernButton : Button
         using var path = Theme.RoundedRect(rect, 7 * s);
 
         Color fill, border, text, glyph;
-        if (Kind == ButtonKind.Primary)
+        if (Kind == ButtonKind.Red)
+        {
+            // Griffith Software's support red (also used for Reset's destructive choices).
+            fill = !Enabled ? Color.FromArgb(240, 170, 176) : _pressed ? Theme.RedPressed : _hover ? Theme.RedHover : Theme.Red;
+            border = fill;
+            text = glyph = Color.White;
+        }
+        else if (Kind == ButtonKind.Primary)
         {
             fill = !Enabled ? Color.FromArgb(160, 190, 235) : _pressed ? Theme.AccentPressed : _hover ? Theme.AccentHover : Theme.Accent;
             border = fill;
@@ -101,7 +108,7 @@ internal sealed class ModernButton : Button
         {
             var focus = RectangleF.Inflate(rect, -3 * s, -3 * s);
             using var fp = Theme.RoundedRect(focus, 5 * s);
-            using var pen = new Pen(Kind == ButtonKind.Primary ? Color.White : Theme.Accent, 1.5f) { DashStyle = DashStyle.Dot };
+            using var pen = new Pen(Kind == ButtonKind.Secondary ? Theme.Accent : Color.White, 1.5f) { DashStyle = DashStyle.Dot };
             g.DrawPath(pen, fp);
         }
     }

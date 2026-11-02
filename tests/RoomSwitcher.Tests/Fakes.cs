@@ -1,4 +1,4 @@
-using RoomSwitcher.Core.Display;
+﻿using RoomSwitcher.Core.Display;
 using RoomSwitcher.Core.Layouts;
 using RoomSwitcher.Core.Model;
 
@@ -10,6 +10,8 @@ internal sealed class FakeDisplay : IDisplayBackend
 
     public DisplayState State { get; set; }
     public string? ValidateError { get; set; }
+    /// <summary>Simulates a driver that only accepts plans with at most this many displays.</summary>
+    public int? ValidateOnlyUpTo { get; set; }
     public string? ApplyError { get; set; }
     /// <summary>Simulates a driver that reports success but leaves nothing on.</summary>
     public bool ApplyLeavesNothingOn { get; set; }
@@ -24,6 +26,7 @@ internal sealed class FakeDisplay : IDisplayBackend
     public DisplayResult Validate(RoomPlan plan)
     {
         Calls.Add("validate");
+        if (ValidateOnlyUpTo is { } most && plan.DevicePaths.Count() > most) return DisplayResult.Fail("The graphics card can't run this combination of displays.");
         return ValidateError == null ? DisplayResult.Success : DisplayResult.Fail(ValidateError);
     }
 
